@@ -700,6 +700,9 @@ But tbh, anything you think is worth doing and pushes this work forward is a plu
 
 Bounties will be given out monthly, at the 15th of every month. 
 
+##License
+
+Use or modify the code for whatever you want. All commercial applications are welcome and encouraged
 
 ## Citation
 
