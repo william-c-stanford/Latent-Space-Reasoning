@@ -596,11 +596,8 @@ class LLMEncoder(Encoder):
         torch.manual_seed(latent_seed)
 
         # Build chat messages for proper formatting
-        system_msg = "You are a helpful planning assistant. Create clear, actionable step-by-step plans."
-        if query:
-            user_msg = f"Create a detailed step-by-step plan for: {query}"
-        else:
-            user_msg = "Create a detailed step-by-step plan."
+        system_msg = "Answer to the best of your ability."
+        user_msg = query if query else ""
 
         # Try to use chat template if available
         if hasattr(self.tokenizer, 'apply_chat_template'):
@@ -714,11 +711,8 @@ class LLMEncoder(Encoder):
             soft_prompt = soft_prompt.to(self.model.dtype)
 
         # Build the text prompt
-        system_msg = "You are a helpful planning assistant. Create clear, actionable step-by-step plans."
-        if query:
-            user_msg = f"Create a detailed step-by-step plan for: {query}"
-        else:
-            user_msg = "Create a detailed step-by-step plan."
+        system_msg = "Answer to the best of your ability."
+        user_msg = query if query else ""
 
         # Try to use chat template if available
         if hasattr(self.tokenizer, 'apply_chat_template'):
