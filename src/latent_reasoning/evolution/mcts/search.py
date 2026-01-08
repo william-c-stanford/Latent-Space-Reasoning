@@ -112,9 +112,9 @@ class MCTSConfig:
     min_temperature: float = 0.1
     use_modifier: bool = True
     
-    # Early stopping - disable by default to ensure fair comparison
-    early_stop_threshold: float = 0.99  # Only stop on near-perfect scores
-    early_stop_patience: int = 50  # Higher patience to allow full exploration
+    # Early stopping
+    early_stop_threshold: float = 0.95
+    early_stop_patience: int = 20
 
 
 @dataclass
@@ -471,7 +471,6 @@ class LatentMCTS:
                 stuck = 1.0
         
         return ModificationContext(
-            current=node.latent,  # Required field
             momentum=momentum,
             recent_modifications=recent_mods,
             stuck_signal=stuck,

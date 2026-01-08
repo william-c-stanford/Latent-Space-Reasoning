@@ -9,9 +9,9 @@ comparison showing:
 - Runtime
 - Quality of decoded outputs
 
-============================================================================= 
+=============================================================================
 USAGE
-============================================================================= 
+=============================================================================
 
 Basic comparison (5 queries, default model):
 
@@ -392,169 +392,6 @@ def save_results(results: List[ComparisonResult], path: str):
     print(f"\nResults saved to {path}")
 
 
-def generate_markdown_report(results: List[ComparisonResult], model: str) -> str:
-    """Generate a detailed Markdown comparison report."""
-    from datetime import datetime
-    
-    lines = [
-        "# L-MCTS vs Evolution Comparison Report",
-        "",
-        f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        f"**Model:** `{model}`",
-        f"**Queries Tested:** {len(results)}",
-        "",
-        "---",
-        "",
-        "## Summary",
-        "",
-    ]
-    
-    # Calculate summary stats
-    mcts_wins = sum(1 for r in results if r.winner == "mcts")
-    evo_wins = sum(1 for r in results if r.winner == "evolution")
-    ties = sum(1 for r in results if r.winner == "tie")
-    
-    avg_evo_score = sum(r.evolution.score for r in results) / len(results)
-    avg_mcts_score = sum(r.mcts.score for r in results) / len(results)
-    
-    avg_evo_evals = sum(r.evolution.evaluations for r in results) / len(results)
-    avg_mcts_evals = sum(r.mcts.evaluations for r in results) / len(results)
-    
-    avg_evo_time = sum(r.evolution.runtime for r in results) / len(results)
-    avg_mcts_time = sum(r.mcts.runtime for r in results) / len(results)
-    
-    # Summary table
-    lines.extend([
-        "| Metric | Evolution | MCTS | Winner |",
-        "|--------|-----------|------|--------|",
-        f"| **Wins** | {evo_wins} ({100*evo_wins/len(results):.0f}%) | {mcts_wins} ({100*mcts_wins/len(results):.0f}%) | {'Evolution' if evo_wins > mcts_wins else 'MCTS' if mcts_wins > evo_wins else 'Tie'} |",
-        f"| **Avg Score** | {avg_evo_score:.3f} | {avg_mcts_score:.3f} | {'Evolution' if avg_evo_score > avg_mcts_score else 'MCTS' if avg_mcts_score > avg_evo_score else 'Tie'} |",
-        f"| **Avg Evaluations** | {avg_evo_evals:.0f} | {avg_mcts_evals:.0f} | {'MCTS' if avg_mcts_evals < avg_evo_evals else 'Evolution'} (fewer is better) |",
-        f"| **Avg Runtime** | {avg_evo_time:.1f}s | {avg_mcts_time:.1f}s | {'MCTS' if avg_mcts_time < avg_evo_time else 'Evolution'} (faster is better) |",
-        "",
-    ])
-    
-    # Winner determination
-    score_winner = "Evolution" if avg_evo_score > avg_mcts_score else "MCTS" if avg_mcts_score > avg_evo_score else "Tie"
-    lines.extend([
-        f"### Overall Winner by Score: **{score_winner}**",
-        "",
-        f"Score difference: {abs(avg_evo_score - avg_mcts_score)*100:.1f}%",
-        "",
-        "---",
-        "",
-        "## Detailed Results",
-        "",
-    ])
-    
-    # Per-query results
-    for r in results:
-        winner_emoji = "🏆" if r.winner == "mcts" else "📈" if r.winner == "evolution" else "🤝"
-        lines.extend([
-            f"### {r.query_id}: {r.query[:60]}{'...' if len(r.query) > 60 else ''}",
-            "",
-            f"**Category:** {r.category} | **Winner:** {r.winner.upper()} {winner_emoji}",
-            "",
-            "| Method | Score | Evaluations | Runtime | Output Length |",
-            "|--------|-------|-------------|---------|---------------|",
-            f"| Evolution | {r.evolution.score:.3f} | {r.evolution.evaluations} | {r.evolution.runtime:.1f}s | {r.evolution.output_length} chars |",
-            f"| MCTS | {r.mcts.score:.3f} | {r.mcts.evaluations} | {r.mcts.runtime:.1f}s | {r.mcts.output_length} chars |",
-            "",
-        ])
-        
-        if r.improvement != 0:
-            lines.append(f"**Improvement:** +{r.improvement:.1f}% for {r.winner}")
-        lines.append("")
-    
-    # Category breakdown
-    categories = set(r.category for r in results)
-    if len(categories) > 1:
-        lines.extend([
-            "---",
-            "",
-            "## Results by Category",
-            "",
-            "| Category | Evolution Wins | MCTS Wins | Ties |",
-            "|----------|----------------|-----------|------|",
-        ])
-        
-        for cat in sorted(categories):
-            cat_results = [r for r in results if r.category == cat]
-            evo_cat = sum(1 for r in cat_results if r.winner == "evolution")
-            mcts_cat = sum(1 for r in cat_results if r.winner == "mcts")
-            ties_cat = sum(1 for r in cat_results if r.winner == "tie")
-            lines.append(f"| {cat} | {evo_cat} | {mcts_cat} | {ties_cat} |")
-        
-        lines.append("")
-    
-    # Analysis section
-    lines.extend([
-        "---",
-        "",
-        "## Analysis",
-        "",
-        "### Key Observations",
-        "",
-    ])
-    
-    if avg_mcts_score >= avg_evo_score:
-        lines.append("- ✅ **MCTS achieved equal or better scores** on average")
-    else:
-        lines.append(f"- ⚠️ **Evolution outperformed MCTS** by {(avg_evo_score - avg_mcts_score)*100:.1f}%")
-    
-    if avg_mcts_evals < avg_evo_evals:
-        efficiency = (avg_evo_evals - avg_mcts_evals) / avg_evo_evals * 100
-        lines.append(f"- ✅ **MCTS was {efficiency:.0f}% more sample efficient** (fewer evaluations)")
-    else:
-        lines.append(f"- ⚠️ **MCTS used more evaluations** than Evolution")
-    
-    if avg_mcts_time < avg_evo_time:
-        speedup = (avg_evo_time - avg_mcts_time) / avg_evo_time * 100
-        lines.append(f"- ✅ **MCTS was {speedup:.0f}% faster**")
-    else:
-        lines.append(f"- ⚠️ **Evolution was faster** than MCTS")
-    
-    lines.extend([
-        "",
-        "### Recommendations",
-        "",
-    ])
-    
-    if mcts_wins >= evo_wins:
-        lines.extend([
-            "Based on these results, **MCTS is recommended** for:",
-            "- Queries requiring structured exploration",
-            "- When sample efficiency matters",
-            "- When you want inspectable search paths",
-        ])
-    else:
-        lines.extend([
-            "Based on these results, **Evolution may be preferable** for:",
-            "- Maximum diversity in solutions",
-            "- When compute budget is not a concern",
-            "- The current query types tested",
-            "",
-            "Consider tuning MCTS parameters:",
-            "- Increase `exploration_constant` for more exploration",
-            "- Increase `n_iterations` for longer search",
-            "- Try different `temperature_decay` values",
-        ])
-    
-    lines.append("")
-    
-    return "\n".join(lines)
-
-
-def save_markdown_report(results: List[ComparisonResult], path: str, model: str):
-    """Save results as a Markdown report."""
-    report = generate_markdown_report(results, model)
-    
-    with open(path, 'w') as f:
-        f.write(report)
-    
-    print(f"\n📊 Markdown report saved to {path}")
-
-
 # =============================================================================
 # MAIN
 # =============================================================================
@@ -621,10 +458,6 @@ def main():
         
         if args.output:
             save_results(results, args.output)
-        
-        # Always save markdown report
-        report_path = args.output.replace('.json', '.md') if args.output else 'mcts_comparison_report.md'
-        save_markdown_report(results, report_path, args.model)
     
     print("\nDone!")
 
