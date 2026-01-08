@@ -1,0 +1,3 @@
+[submodule "SciEvalLit"]
+	path = SciEvalLit
+	url = https://github.com/InternScience/SciEvalKit
