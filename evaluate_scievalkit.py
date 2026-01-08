@@ -28,7 +28,7 @@ from pathlib import Path
 # Add paths
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR / 'src'))
-sys.path.insert(0, str(SCRIPT_DIR / 'SciEvalKit'))
+sys.path.insert(0, str(SCRIPT_DIR / 'SciEvalLit'))
 
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
@@ -76,6 +76,7 @@ def run_evaluation(
     work_dir: str,
     mode: str = 'all',
     verbose: bool = False,
+    max_samples: int = None,
 ):
     """
     Run evaluation for a single model on a single dataset.
@@ -87,6 +88,7 @@ def run_evaluation(
         work_dir: Output directory
         mode: 'all' (infer+eval), 'infer' (inference only), 'eval' (eval only)
         verbose: Print verbose output
+        max_samples: Limit number of samples (for testing)
     """
     from scieval.dataset import build_dataset
     from scieval.smp import load, dump, get_pred_file_path
@@ -121,11 +123,17 @@ def run_evaluation(
         print(f"ERROR: Failed to load dataset {dataset_name}")
         return None
         
-    print(f"Dataset loaded: {len(dataset)} samples")
+    total_samples = len(dataset)
+    if max_samples is not None and max_samples < total_samples:
+        print(f"Dataset loaded: {total_samples} samples (limited to {max_samples})")
+        dataset.data = dataset.data.head(max_samples)
+    else:
+        print(f"Dataset loaded: {total_samples} samples")
     print(f"Dataset type: {dataset.TYPE}, Modality: {dataset.MODALITY}")
     
     # Define result file path
-    result_file = os.path.join(model_work_dir, f'{model_name}_{dataset_name}.pkl')
+    suffix = f"_limit{max_samples}" if max_samples else ""
+    result_file = os.path.join(model_work_dir, f'{model_name}_{dataset_name}{suffix}.pkl')
     
     # Run inference if needed
     if mode in ['all', 'infer']:
@@ -349,6 +357,7 @@ def main():
                 work_dir=args.work_dir,
                 mode=args.mode,
                 verbose=args.verbose,
+                max_samples=args.max_samples,
             )
             all_results[f'{model_name}_{dataset_name}'] = result
             
